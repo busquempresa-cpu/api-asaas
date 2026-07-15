@@ -9,8 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Token de Produção ou Sandbox do Asaas (Configure no ambiente do Render)
-$asaas_token = getenv('ASAAS_API_KEY') ?: 'SUA_CHAVE_ASAAS_AQUI';
+$token_asaas = getenv('ASAAS_API_KEY');
 $asaas_url   = "https://www.asaas.com/api/v3/accounts"; // Use sandbox.asaas.com para homologação
 
 // Recebe os dados enviados pelo seu Aplicativo
