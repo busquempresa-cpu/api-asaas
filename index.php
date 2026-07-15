@@ -11,8 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// 🔐 SUA CHAVE DE SANDBOX DO ASAAS
-$apiKey = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmIyN2IxZGVkLWE4YzItNDgxMS04MTc2LWIwMzJhNGFkOTk2NTo6JGFhY2hfZjBjNWI1MmUtNWYzMi00NzM5LWFkNzgtMjExNjk0YzYwM2Jl'; 
+// O PHP vai buscar a chave de forma totalmente segura direto do painel do Render!
+$apiKey = getenv('ASAAS_API_KEY');
 
 // URL do Asaas em Sandbox (Ambiente de Testes)
 $asaasUrl = 'https://sandbox.asaas.com/api/v3/payments';
