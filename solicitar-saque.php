@@ -7,7 +7,7 @@ header("Content-Type: application/json");
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { exit(0); }
 
 $token_asaas = getenv('ASAAS_API_KEY');
-$asaasUrl = "https://sandbox.asaas.com/api/v3/payments";
+$asaasUrl = "https://sandbox.asaas.com/api/v3/transfers";
 
 $input = json_decode(file_get_contents("php://input"), true);
 
