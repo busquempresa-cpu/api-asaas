@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $token_asaas = getenv('ASAAS_API_KEY');
-$asaas_url   = "https://www.asaas.com/api/v3/accounts"; // Use sandbox.asaas.com para homologação
+$asaas_url   = "https://www.asaas.com/api/v3/accounts";
 
 // Recebe os dados enviados pelo seu Aplicativo
 $input = json_decode(file_get_contents("php://input"), true);
