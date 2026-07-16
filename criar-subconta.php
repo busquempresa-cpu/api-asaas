@@ -28,8 +28,17 @@ if (empty($nome) || empty($documento) || empty($email)) {
     ]);
     exit;
 }
-$token_asaas = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
 
+// Busca a chave de API de forma segura das variáveis de ambiente do Render
+$token_asaas = $_ENV['ASAAS_API_KEY'] ?? $_SERVER['ASAAS_API_KEY'] ?? '';
+
+if (empty($token_asaas)) {
+    echo json_encode([
+        "sucesso" => false,
+        "erro" => "Configuracao do servidor incompleta: Chave API nao encontrada."
+    ]);
+    exit;
+}
 
 // URL Oficial do Asaas Sandbox (sem o /api/)
 $asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
@@ -40,8 +49,8 @@ $dadosSubconta = [
     "email" => $email,
     "cpfCnpj" => $documento,
     "mobilePhone" => $whatsapp,
-    "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL"
-    "incomeValue" => 5000,
+    "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL", // <-- A vírgula corrigida aqui!
+    "incomeValue" => 5000
 ];
 
 // Dispara a requisição Curl para o Asaas
