@@ -28,8 +28,17 @@ if (empty($nome) || empty($documento) || empty($email)) {
     ]);
     exit;
 }
-$token_asaas = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
 
+// Busca a chave de API de forma segura das variáveis de ambiente do Render
+$token_asaas = $_ENV['ASAAS_API_KEY'] ?? $_SERVER['ASAAS_API_KEY'] ?? '';
+
+if (empty($token_asaas)) {
+    echo json_encode([
+        "sucesso" => false,
+        "erro" => "Configuracao do servidor incompleta: Chave API nao encontrada."
+    ]);
+    exit;
+}
 
 // URL Oficial do Asaas Sandbox (sem o /api/)
 $asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
@@ -54,7 +63,7 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 // Evita erros de SSL no servidor de testes
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
 
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
+curl_setopt($ch, CURLOPT_HTTPHEADER = [
     "Content-Type: application/json",
     "access_token: $token_asaas",
     "User-Agent: MeuCashback"
@@ -76,15 +85,18 @@ if (!$resposta) {
 $dadosRetorno = json_decode($resposta, true);
 
 if ($codigo_http === 200 || $codigo_http === 201) {
+    $walletId = $dadosRetorno['walletId'] ?? '';
+
+    // DISPARO AUTOMÁTICO E DEFINITIVO DA CHAVE PIX NA SUBCONTA
+    if (!empty($walletId)) {
+        criarChavePixAutomatica($walletId, $token_asaas);
+    }
+
+    // Retorna o sucesso para o aplicativo apenas APÓS criar a chave
     echo json_encode([
         "sucesso" => true,
-        "walletId" => $dadosRetorno['walletId'] ?? ''
+        "walletId" => $walletId
     ]);
-    // Procure por uma linha parecida com esta no seu código (onde ele captura o walletId da resposta):
-$walletId = $dadosConta['walletId']; // O nome da variável pode variar um pouco no seu código
-
-// LOGO ABAIXO DELA, INSIRA ESTA LINHA PARA DISPARAR A CRIAÇÃO DA CHAVE:
-criarChavePixAutomatica($walletId, $api_key);
 } else {
     // Trata erros retornados de forma segura sem gerar Warnings no PHP
     $mensagemErro = "Erro desconhecido na API do Asaas.";
@@ -97,6 +109,7 @@ criarChavePixAutomatica($walletId, $api_key);
         "erro" => $mensagemErro
     ]);
 }
+
 /**
  * Cria uma Chave Pix Aleatória (EVP) automática para uma subconta recém-criada.
  * 
@@ -105,22 +118,20 @@ criarChavePixAutomatica($walletId, $api_key);
  * @return array Resposta da API do Asaas
  */
 function criarChavePixAutomatica($walletId, $apiKeyMaster) {
-    // Define a URL correta (Sandbox ou Produção)
-    $url = "https://sandbox.asaas.com/api/v3/pix/addressKeys"; 
-    // Se for produção, mude para: https://api.asaas.com/v3/pix/addressKeys
+    $url = "https://api-sandbox.asaas.com/v3/pix/addressKeys"; 
 
     $ch = curl_init();
-
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CUSTOMREQUEST => "POST",
+        CURLOPT_POST => true,
+        CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_POSTFIELDS => json_encode([
             "type" => "EVP" // EVP = Chave Aleatória (Gerada na hora sem burocracia)
         ]),
         CURLOPT_HTTPHEADER => [
             "Content-Type: application/json",
-            "access_token: " . $apiKeyMaster, // Seu Token Master
+            "access_token: " . $apiKeyMaster, // Seu Token dinâmico vindo do Render
             "walletId: " . $walletId          // Vincula diretamente à conta do Lojista
         ],
     ]);
