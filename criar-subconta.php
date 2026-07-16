@@ -92,3 +92,36 @@ if ($codigo_http === 200 || $codigo_http === 201) {
         "erro" => $mensagemErro
     ]);
 }
+/**
+ * Cria uma Chave Pix Aleatória (EVP) automática para uma subconta recém-criada.
+ * 
+ * @param string $walletId O ID da carteira retornada pelo Asaas
+ * @param string $apiKeyMaster A sua chave token de API Master do Asaas
+ * @return array Resposta da API do Asaas
+ */
+function criarChavePixAutomatica($walletId, $apiKeyMaster) {
+    // Define a URL correta (Sandbox ou Produção)
+    $url = "https://sandbox.asaas.com/api/v3/pix/addressKeys"; 
+    // Se for produção, mude para: https://api.asaas.com/v3/pix/addressKeys
+
+    $ch = curl_init();
+
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST => "POST",
+        CURLOPT_POSTFIELDS => json_encode([
+            "type" => "EVP" // EVP = Chave Aleatória (Gerada na hora sem burocracia)
+        ]),
+        CURLOPT_HTTPHEADER => [
+            "Content-Type: application/json",
+            "access_token: " . $apiKeyMaster, // Seu Token Master
+            "walletId: " . $walletId          // Vincula diretamente à conta do Lojista
+        ],
+    ]);
+
+    $resposta = curl_exec($ch);
+    curl_close($ch);
+
+    return json_decode($resposta, true);
+}
