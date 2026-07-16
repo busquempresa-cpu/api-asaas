@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $apiKey = getenv('ASAAS_API_KEY');
 
 // URL do Asaas em Sandbox (Ambiente de Testes)
-$asaasUrl = 'https://sandbox.asaas.com/api/v3/payments';
+$asaasUrl = 'https://api-sandbox.asaas.com/api/v3/payments';
 
 // Pega os dados enviados pelo seu app do Firebase (Valor e ID do Cliente)
 $inputJson = file_get_contents('php://input');
