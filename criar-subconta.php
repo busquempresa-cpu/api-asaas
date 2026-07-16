@@ -80,6 +80,11 @@ if ($codigo_http === 200 || $codigo_http === 201) {
         "sucesso" => true,
         "walletId" => $dadosRetorno['walletId'] ?? ''
     ]);
+    // Procure por uma linha parecida com esta no seu código (onde ele captura o walletId da resposta):
+$walletId = $dadosConta['walletId']; // O nome da variável pode variar um pouco no seu código
+
+// LOGO ABAIXO DELA, INSIRA ESTA LINHA PARA DISPARAR A CRIAÇÃO DA CHAVE:
+criarChavePixAutomatica($walletId, $api_key);
 } else {
     // Trata erros retornados de forma segura sem gerar Warnings no PHP
     $mensagemErro = "Erro desconhecido na API do Asaas.";
