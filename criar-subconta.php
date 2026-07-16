@@ -28,7 +28,7 @@ if (empty($nome) || empty($documento) || empty($email)) {
 
 // 2. Chave do Asaas configurada no Render
 $token_asaas = getenv('ASAAS_API_KEY');
-$asaas_url = "https://sandbox.asaas.com/api/v3/accounts";
+$asaas_url = "https://sandbox.asaas.com/v3/accounts";
 
 // Prepara os dados para enviar ao Asaas
 $dadosSubconta = [
