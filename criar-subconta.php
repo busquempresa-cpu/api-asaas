@@ -32,7 +32,7 @@ $token_asaas = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYz
 
 
 // URL Oficial do Asaas Sandbox (sem o /api/)
-$asaas_url = "https://sandbox.asaas.com/v3/accounts";
+$asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
 
 // Prepara os dados para enviar ao Asaas
 $dadosSubconta = [
