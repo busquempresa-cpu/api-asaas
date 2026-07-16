@@ -41,7 +41,7 @@ $dadosSubconta = [
     "cpfCnpj" => $documento,
     "mobilePhone" => $whatsapp,
     "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL"
-    "incomeValue" => 5000
+    "incomeValue" => 5000,
 ];
 
 // Dispara a requisição Curl para o Asaas
