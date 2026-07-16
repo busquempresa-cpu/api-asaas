@@ -30,7 +30,7 @@ if (empty($nome) || empty($documento) || empty($email)) {
 $dadosSubconta = [
     "name" => $nome,
     "email" => $email,
-    "cpfCnpj" => $cnpj,
+    "cpfCnpj" => $documento,
     "mobilePhone" => $whatsapp,
     "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL" // Define se é MEI/LTDA ou Pessoa Física
 ];
