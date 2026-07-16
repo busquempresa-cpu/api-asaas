@@ -63,7 +63,8 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 // Evita erros de SSL no servidor de testes
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
 
-curl_setopt($ch, CURLOPT_HTTPHEADER = [
+// CORREÇÃO AQUI: Trocado o "=" por "," que estava quebrando o PHP
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
     "Content-Type: application/json",
     "access_token: $token_asaas",
     "User-Agent: MeuCashback"
@@ -112,8 +113,7 @@ if ($codigo_http === 200 || $codigo_http === 201) {
 
 /**
  * Cria uma Chave Pix Aleatória (EVP) automática para uma subconta recém-criada.
- * 
- * @param string $walletId O ID da carteira retornada pelo Asaas
+ * * @param string $walletId O ID da carteira retornada pelo Asaas
  * @param string $apiKeyMaster A sua chave token de API Master do Asaas
  * @return array Resposta da API do Asaas
  */
