@@ -21,14 +21,16 @@ $entrada = json_decode($inputJson, true);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($entrada['valor'])) {
 
-    // Dados da cobrança do PIX exigidos pelo Asaas (Nomes originais em inglês)
-    $dados = [
-        "customer" => "cus_000005728411", // Certifique-se de usar um ID de cliente de teste válido do seu Sandbox
-        "billingType" => "PIX",
-        "value" => floatval($entrada['valor']),
-        "dueDate" => date('Y-m-d', strtotime('+1 days')),
-        "description" => "Recarga Saldo Cashback - Busque Empresa"
-    ];
+        // Dados da cobrança do PIX exigidos pelo Asaas corrigidos
+        $dados = [
+            "customer" => "cus_000005728491", // ID do cliente de teste
+            "billingType" => "PIX",
+            "value" => floatval($entrada['valor']),
+            "dueDate" => date('Y-m-d', strtotime('+1 days')),
+            "description" => "Recarga Saldo Cashback - Busque Empresa",
+            "walletId" => $entrada['walletId'] // Repassa a carteira enviada pelo app
+        ];
+    
 
     // Configuração da chamada cURL para o Asaas
     $ch = curl_init($asaasUrl);
