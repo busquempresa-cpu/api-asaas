@@ -20,7 +20,7 @@ $nome = $entrada['nome'] ?? '';
 $email = $entrada['email'] ?? '';
 $whatsapp = preg_replace('/\D/', '', $entrada['whatsapp'] ?? '');
 
-// Validação simples
+// Validação simples de campos obrigatórios
 if (empty($nome) || empty($documento) || empty($email)) {
     echo json_encode([
         "sucesso" => false,
@@ -40,16 +40,20 @@ if (empty($token_asaas)) {
     exit;
 }
 
-// URL Oficial do Asaas Sandbox (sem o /api/)
+// URL Oficial do Asaas Sandbox
 $asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
 
-// Prepara os dados para enviar ao Asaas
+// Regra crucial para o modelo BaaS:
+// CPF sempre é INDIVIDUAL. CNPJ de teste no Sandbox sempre enviamos como MEI para evitar exigir dados de sócios.
+$tipoEmpresa = (strlen($documento) > 11) ? "MEI" : "INDIVIDUAL";
+
+// Prepara a estrutura exata aceita pelo BaaS Sandbox
 $dadosSubconta = [
     "name" => $nome,
     "email" => $email,
     "cpfCnpj" => $documento,
+    "companyType" => $tipoEmpresa,
     "mobilePhone" => $whatsapp,
-    "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL", // <-- A vírgula corrigida aqui!
     "incomeValue" => 5000
 ];
 
@@ -60,7 +64,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 
-// Evita erros de SSL no servidor de testes
+// Evita erros de SSL no servidor de testes do Render
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
 
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -73,11 +77,10 @@ $resposta = curl_exec($ch);
 $codigo_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
-// Trata caso a resposta venha totalmente vazia
 if (!$resposta) {
     echo json_encode([
         "sucesso" => false,
-        "erro" => "Nao foi possivel conectar ao servidor do Asaas. Verifique a internet ou o SSL."
+        "erro" => "Nao foi possivel conectar ao servidor do Asaas."
     ]);
     exit;
 }
@@ -90,8 +93,8 @@ if ($codigo_http === 200 || $codigo_http === 201) {
         "walletId" => $dadosRetorno['walletId'] ?? ''
     ]);
 } else {
-    // Trata erros retornados de forma segura sem gerar Warnings no PHP
-    $mensagemErro = "Erro desconhecido na API do Asaas.";
+    // Retorna o erro exato que o Asaas devolver para sabermos o que corrigir se travar
+    $mensagemErro = "Erro ao cadastrar no Asaas.";
     if (isset($dadosRetorno['errors']) && is_array($dadosRetorno['errors'])) {
         $mensagemErro = $dadosRetorno['errors'][0]['description'] ?? $mensagemErro;
     }
