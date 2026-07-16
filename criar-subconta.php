@@ -40,7 +40,7 @@ $dadosSubconta = [
     "email" => $email,
     "cpfCnpj" => $documento,
     "mobilePhone" => $whatsapp,
-    "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL",
+    "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL"
     "incomeValue" => 5000,
 ];
 
