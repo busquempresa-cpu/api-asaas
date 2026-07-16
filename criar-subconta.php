@@ -39,15 +39,10 @@ $dadosSubconta = [
     "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL"
 ];
 
-// Dispara a requisição Curl para o Asaas
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $asaas_url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     "Content-Type: application/json",
-    "access_token: $token_asaas"
+    "access_token: $token_asaas",
+    "User-Agent: MeuCashback"
 ]);
 
 $resposta = curl_exec($ch);
