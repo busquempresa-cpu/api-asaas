@@ -28,9 +28,8 @@ if (empty($nome) || empty($documento) || empty($email)) {
     ]);
     exit;
 }
+$token_asaas = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
 
-// 2. Chave do Asaas configurada no Render
-$token_asaas = getenv('ASAAS_API_KEY');
 
 // URL Oficial do Asaas Sandbox (sem o /api/)
 $asaas_url = "https://sandbox.asaas.com/v3/accounts";
