@@ -1,38 +1,42 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: POST");
 header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type");
 
-// Impede que requisições de teste (OPTIONS) quebrem a execução
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$token_asaas = getenv('ASAAS_API_KEY');
-$asaasUrl = "https://sandbox.asaas.com/api/v3/accounts";
+// 1. Pega os dados enviados pelo seu aplicativo
+$entrada = json_decode(file_get_contents('php://input'), true);
 
-// Recebe os dados enviados pelo seu Aplicativo
-$input = json_decode(file_get_contents("php://input"), true);
+// IMPORTANTE: Busca a chave 'documento' que está vindo do seu Firebase
+$documento = preg_replace('/\D/', '', $entrada['documento'] ?? $entrada['cnpj'] ?? $entrada['cpf'] ?? '');
+$nome = $entrada['nome'] ?? '';
+$email = $entrada['email'] ?? '';
+$whatsapp = preg_replace('/\D/', '', $entrada['whatsapp'] ?? '');
 
-$nome      = $input['nome'] ?? '';
-$documento = preg_replace('/\D/', '', $input['documento'] ?? ''); // Remove pontos e traços
-$email     = $input['email'] ?? '';
-$whatsapp  = preg_replace('/\D/', '', $input['whatsapp'] ?? '');
-
+// Validação simples
 if (empty($nome) || empty($documento) || empty($email)) {
-    echo json_encode(["erro" => "Nome, documento e email são campos obrigatórios."]);
-    http_response_code(400);
+    echo json_encode([
+        "sucesso" => false,
+        "erro" => "Nome, documento e email sao campos obrigatorios."
+    ]);
     exit;
 }
 
-// Monta o payload para o Asaas criar a Subconta/Conta filha
+// 2. Chave do Asaas configurada no Render
+$token_asaas = getenv('ASAAS_API_KEY');
+$asaas_url = "https://sandbox.asaas.com/api/v3/accounts";
+
+// Prepara os dados para enviar ao Asaas
 $dadosSubconta = [
     "name" => $nome,
     "email" => $email,
     "cpfCnpj" => $documento,
     "mobilePhone" => $whatsapp,
-    "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL" // Define se é MEI/LTDA ou Pessoa Física
+    "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL"
 ];
 
 // Dispara a requisição Curl para o Asaas
@@ -43,24 +47,24 @@ curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     "Content-Type: application/json",
-    "access_token: $asaas_token"
+    "access_token: $token_asaas"
 ]);
 
-$response = curl_exec($ch);
-$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$resposta = curl_exec($ch);
+$codigo_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
-$dadosRetorno = json_decode($response, true);
+$dadosRetorno = json_decode($resposta, true);
 
-if ($http_code === 200 || $http_code === 201) {
-    // Retorna com sucesso o walletId (ID de carteira/subconta gerado pelo Asaas)
+if ($codigo_http === 200 || $codigo_http === 201) {
+    // Retorna com sucesso o walletId
     echo json_encode([
         "sucesso" => true,
-        "walletId" => $dadosRetorno['walletId'] // Esse é o ID de identificação que gravamos no Firebase
+        "walletId" => $dadosRetorno['walletId'] ?? ''
     ]);
 } else {
-    // Caso ocorra erro de validação (ex: CPF inválido ou e-mail já usado no Asaas)
-    $mensagemErro = $dadosRetorno['errors'][0]['description'] ?? "Erro desconhecido ao criar subconta.";
+    // Trata erros de validação retornados pelo Asaas
+    $mensagemErro = $dadosRetorno['errors'][0]['description'] ?? "Erro desconhecido na API do Asaas.";
     echo json_encode([
         "sucesso" => false,
         "erro" => $mensagemErro
