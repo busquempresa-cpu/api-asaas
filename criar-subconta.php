@@ -40,14 +40,8 @@ if (empty($token_asaas)) {
     exit;
 }
 
-// URL Oficial do Asaas Sandbox
+// URL Oficial do Asaas Sandbox (sem o /api/)
 $asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
-
-// Ajusta o tipo de empresa dinamicamente para não travar a validação do Asaas
-$tipoEmpresa = "INDIVIDUAL";
-if (strlen($documento) > 11) {
-    $tipoEmpresa = "MEI"; // Mudado de LIMITED para MEI para aceitar cadastros simples de CNPJ
-}
 
 // Prepara os dados para enviar ao Asaas
 $dadosSubconta = [
@@ -55,7 +49,7 @@ $dadosSubconta = [
     "email" => $email,
     "cpfCnpj" => $documento,
     "mobilePhone" => $whatsapp,
-    "companyType" => $tipoEmpresa,
+    "companyType" => strlen($documento) > 11 ? "LIMITED" : "INDIVIDUAL", // <-- A vírgula corrigida aqui!
     "incomeValue" => 5000
 ];
 
