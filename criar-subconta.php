@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // 1. Pega os dados enviados pelo seu aplicativo
 $entrada = json_decode(file_get_contents('php://input'), true);
 
-// Limpeza rigorosa do CPF/CNPJ: remove tudo o que não for número de forma precisa
+// Limpeza rigorosa do CPF/CNPJ: remove tudo o que não for número
 $documento = isset($entrada['documento']) ? preg_replace('/[^0-9]/', '', $entrada['documento']) : '';
 if (empty($documento)) {
     $documento = isset($entrada['cnpj']) ? preg_replace('/[^0-9]/', '', $entrada['cnpj']) : '';
@@ -37,16 +37,8 @@ if (empty($nome) || empty($documento) || empty($email)) {
     exit;
 }
 
-// Busca a chave de API de forma segura das variáveis de ambiente do Render
-$token_asaas = $_ENV['ASAAS_API_KEY'] ?? $_SERVER['ASAAS_API_KEY'] ?? '';
-
-if (empty($token_asaas)) {
-    echo json_encode([
-        "sucesso" => false,
-        "erro" => "Configuracao do servidor incompleta: Chave API nao encontrada."
-    ]);
-    exit;
-}
+// Chave do Asaas Sandbox inserida diretamente no código conforme solicitado
+$token_asaas = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
 
 // URL Oficial do Asaas Sandbox
 $asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
@@ -109,6 +101,6 @@ if ($codigo_http === 200 || $codigo_http === 201) {
     echo json_encode([
         "sucesso" => false,
         "erro" => $mensagemErro,
-        "detalhes" => "HTTP $codigo_http - Documento enviado: $documento" // Adicionado para ajudar a diagnosticar
+        "detalhes" => "HTTP $codigo_http - Documento enviado: $documento"
     ]);
 }
