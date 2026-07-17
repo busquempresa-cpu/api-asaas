@@ -15,16 +15,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // 1. Pega os dados enviados pelo seu aplicativo
 $entrada = json_decode(file_get_contents('php://input'), true);
 
-$documento = preg_replace('/\D/', '', $entrada['documento'] ?? $entrada['cnpj'] ?? $entrada['cpf'] ?? '');
+// Limpeza rigorosa do CPF/CNPJ: remove tudo o que não for número de forma precisa
+$documento = isset($entrada['documento']) ? preg_replace('/[^0-9]/', '', $entrada['documento']) : '';
+if (empty($documento)) {
+    $documento = isset($entrada['cnpj']) ? preg_replace('/[^0-9]/', '', $entrada['cnpj']) : '';
+}
+if (empty($documento)) {
+    $documento = isset($entrada['cpf']) ? preg_replace('/[^0-9]/', '', $entrada['cpf']) : '';
+}
+
 $nome = $entrada['nome'] ?? '';
 $email = $entrada['email'] ?? '';
-$whatsapp = preg_replace('/\D/', '', $entrada['whatsapp'] ?? '');
+$whatsapp = isset($entrada['whatsapp']) ? preg_replace('/[^0-9]/', '', $entrada['whatsapp']) : '';
 
-// Validação simples de campos obrigatórios
+// Validação simples de campos obrigatórios antes de enviar ao Asaas
 if (empty($nome) || empty($documento) || empty($email)) {
     echo json_encode([
         "sucesso" => false,
-        "erro" => "Nome, documento e email sao campos obrigatorios."
+        "erro" => "Nome, documento e email sao campos obrigatórios."
     ]);
     exit;
 }
@@ -43,8 +51,7 @@ if (empty($token_asaas)) {
 // URL Oficial do Asaas Sandbox
 $asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
 
-// Regra crucial para o modelo BaaS:
-// CPF sempre é INDIVIDUAL. CNPJ de teste no Sandbox sempre enviamos como MEI para evitar exigir dados de sócios.
+// Define o tipo de empresa com base no tamanho do documento limpo
 $tipoEmpresa = (strlen($documento) > 11) ? "MEI" : "INDIVIDUAL";
 
 // Prepara a estrutura exata aceita pelo BaaS Sandbox
@@ -93,7 +100,7 @@ if ($codigo_http === 200 || $codigo_http === 201) {
         "walletId" => $dadosRetorno['walletId'] ?? ''
     ]);
 } else {
-    // Retorna o erro exato que o Asaas devolver para sabermos o que corrigir se travar
+    // Retorna o erro detalhado que a API do Asaas devolveu
     $mensagemErro = "Erro ao cadastrar no Asaas.";
     if (isset($dadosRetorno['errors']) && is_array($dadosRetorno['errors'])) {
         $mensagemErro = $dadosRetorno['errors'][0]['description'] ?? $mensagemErro;
@@ -101,6 +108,7 @@ if ($codigo_http === 200 || $codigo_http === 201) {
     
     echo json_encode([
         "sucesso" => false,
-        "erro" => $mensagemErro
+        "erro" => $mensagemErro,
+        "detalhes" => "HTTP $codigo_http - Documento enviado: $documento" // Adicionado para ajudar a diagnosticar
     ]);
 }
