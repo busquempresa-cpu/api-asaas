@@ -28,7 +28,12 @@ $nome = $entrada['nome'] ?? '';
 $email = $entrada['email'] ?? '';
 $whatsapp = isset($entrada['whatsapp']) ? preg_replace('/[^0-9]/', '', $entrada['whatsapp']) : '';
 
-// Validação simples de campos obrigatórios antes de enviar ao Asaas
+// Garante que o celular tenha um número válido padrão caso venha vazio do app
+if (empty($whatsapp) || strlen($whatsapp) < 10) {
+    $whatsapp = "49999999999"; 
+}
+
+// Validação simples de campos essenciais antes de enviar ao Asaas
 if (empty($nome) || empty($documento) || empty($email)) {
     echo json_encode([
         "sucesso" => false,
@@ -37,7 +42,7 @@ if (empty($nome) || empty($documento) || empty($email)) {
     exit;
 }
 
-// Chave do Asaas Sandbox inserida diretamente no código conforme solicitado
+// Chave do Asaas Sandbox inserida diretamente no código
 $token_asaas = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
 
 // URL Oficial do Asaas Sandbox
@@ -46,14 +51,19 @@ $asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
 // Define o tipo de empresa com base no tamanho do documento limpo
 $tipoEmpresa = (strlen($documento) > 11) ? "MEI" : "INDIVIDUAL";
 
-// Prepara a estrutura exata aceita pelo BaaS Sandbox
+// Prepara a estrutura exigida pelo Asaas (incluindo dados obrigatórios de endereço padrão para testes)
 $dadosSubconta = [
     "name" => $nome,
     "email" => $email,
     "cpfCnpj" => $documento,
     "companyType" => $tipoEmpresa,
     "mobilePhone" => $whatsapp,
-    "incomeValue" => 5000
+    "incomeValue" => 5000,
+    // Endereço padrão exigido pela documentação oficial do Asaas
+    "postalCode" => "89600000",
+    "address" => "Rua XV de Novembro",
+    "addressNumber" => "100",
+    "province" => "Centro",
 ];
 
 // Dispara a requisição Curl para o Asaas
@@ -89,10 +99,11 @@ $dadosRetorno = json_decode($resposta, true);
 if ($codigo_http === 200 || $codigo_http === 201) {
     echo json_encode([
         "sucesso" => true,
-        "walletId" => $dadosRetorno['walletId'] ?? ''
+        "walletId" => $dadosRetorno['walletId'] ?? '',
+        "apiKey" => $dadosRetorno['apiKey'] ?? ''
     ]);
 } else {
-    // Retorna o erro detalhado que a API do Asaas devolveu
+    // Retorna o erro exato que a API do Asaas devolveu para identificarmos qualquer problema
     $mensagemErro = "Erro ao cadastrar no Asaas.";
     if (isset($dadosRetorno['errors']) && is_array($dadosRetorno['errors'])) {
         $mensagemErro = $dadosRetorno['errors'][0]['description'] ?? $mensagemErro;
