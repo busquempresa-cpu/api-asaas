@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Sua Chave Master de Homologação do Asaas
+// Sua Chave Master de Homologação
 $apiKeyMaster = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4'; 
 $urlAsaas = 'https://sandbox.asaas.com/v3/accounts';
 
@@ -47,7 +47,7 @@ curl_close($ch);
 
 if ($httpCode == 200 || $httpCode == 201) {
     $subcontaData = json_decode($response, true);
-    // Devolve o asaasCustomerId para você salvar no Firebase do lojista
+    // Retorna o ID (SUB_...) para você guardar no Firebase do lojista
     echo json_encode([
         "sucesso" => true,
         "asaasCustomerId" => $subcontaData['id']
