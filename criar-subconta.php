@@ -99,7 +99,7 @@ if ($codigo_http === 200 || $codigo_http === 201) {
     if (!empty($subconta_apiKey)) {
         
         $url_pix = "https://api-sandbox.asaas.com/v3/pix/addressKeys";
-        $dadosPix = ["type" => "EVP"]; // EVP significa chave aleatória
+        $dadosPix = ["type" => "EVP"]; // EVP significa chave aleatória (Chave de Endereçamento Virtual)
 
         $ch_pix = curl_init();
         curl_setopt($ch_pix, CURLOPT_URL, $url_pix);
@@ -109,7 +109,7 @@ if ($codigo_http === 200 || $codigo_http === 201) {
         curl_setopt($ch_pix, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch_pix, CURLOPT_HTTPHEADER, [
             "Content-Type: application/json",
-            "access_token: $subconta_apiKey", // Importante: Usa o token da própria subconta recém-criada
+            "access_token: $subconta_apiKey", // Executa a chamada EM NOME da subconta
             "User-Agent: MeuCashback"
         ]);
 
@@ -119,11 +119,11 @@ if ($codigo_http === 200 || $codigo_http === 201) {
 
         if ($codigo_http_pix === 200 || $codigo_http_pix === 201) {
             $dadosRetornoPix = json_decode($resposta_pix, true);
-            $chavePixGerada = $dadosRetornoPix['key'] ?? ''; // Guarda a chave pix gerada
+            $chavePixGerada = $dadosRetornoPix['key'] ?? ''; // Captura o hash da chave aleatória gerada
         }
     }
 
-    // Retorna a resposta de sucesso completa para o seu aplicativo
+    // Retorna a resposta estruturada para o JavaScript do seu App ler e persistir no Firebase
     echo json_encode([
         "sucesso" => true,
         "walletId" => $walletId,
@@ -145,3 +145,4 @@ if ($codigo_http === 200 || $codigo_http === 201) {
         "detalhes" => "HTTP $codigo_http - Documento enviado: $documento"
     ]);
 }
+?>
