@@ -88,18 +88,48 @@ if (!$resposta) {
 
 $dadosRetorno = json_decode($resposta, true);
 
-// Se a conta foi criada com sucesso, vamos para o Passo 2 criar a Chave Pix dela
+// Se a conta foi criada com sucesso, avançamos
 if ($codigo_http === 200 || $codigo_http === 201) {
     
+    $subconta_id = $dadosRetorno['id'] ?? ''; // O ID único da subconta criada (ex: b6bff0c5...)
     $walletId = $dadosRetorno['walletId'] ?? '';
-    $subconta_apiKey = $dadosRetorno['apiKey'] ?? ''; // Chave de API própria da nova subconta
+    $subconta_apiKey = '';
     $chavePixGerada = '';
 
-    // 2º PASSO: Se a subconta retornou uma apiKey, criamos a chave Pix Aleatória para ela
+    // 2º PASSO NOVO: Como o Asaas não entrega a API Key de bandeja, nós geramos ela usando o endpoint correto
+    if (!empty($subconta_id)) {
+        $url_gerar_chave = "https://api-sandbox.asaas.com/v3/accounts/{$subconta_id}/apiKey";
+        
+        // Define o nome de identificação da chave que aparecerá no painel
+        $dadosChave = ["name" => "Chave de Acesso Integrada - Meu Cashback"];
+
+        $ch_chave = curl_init();
+        curl_setopt($ch_chave, CURLOPT_URL, $url_gerar_chave);
+        curl_setopt($ch_chave, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch_chave, CURLOPT_POST, true);
+        curl_setopt($ch_chave, CURLOPT_POSTFIELDS, json_encode($dadosChave));
+        curl_setopt($ch_chave, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch_chave, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json",
+            "access_token: $token_master", // A conta Master solicita a criação usando a permissão que você ativou
+            "User-Agent: MeuCashback"
+        ]);
+
+        $resposta_chave = curl_exec($ch_chave);
+        $codigo_http_chave = curl_getinfo($ch_chave, CURLINFO_HTTP_CODE);
+        curl_close($ch_chave);
+
+        if ($codigo_http_chave === 200 || $codigo_http_chave === 201) {
+            $dadosRetornoChave = json_decode($resposta_chave, true);
+            $subconta_apiKey = $dadosRetornoChave['apiKey'] ?? ''; // Chave de API gerada com sucesso!
+        }
+    }
+
+    // 3º PASSO: Criar a chave Pix Aleatória para ela usando a chave que acabamos de gerar
     if (!empty($subconta_apiKey)) {
         
         $url_pix = "https://api-sandbox.asaas.com/v3/pix/addressKeys";
-        $dadosPix = ["type" => "EVP"]; // EVP significa chave aleatória (Chave de Endereçamento Virtual)
+        $dadosPix = ["type" => "EVP"]; // EVP significa chave aleatória
 
         $ch_pix = curl_init();
         curl_setopt($ch_pix, CURLOPT_URL, $url_pix);
@@ -109,7 +139,7 @@ if ($codigo_http === 200 || $codigo_http === 201) {
         curl_setopt($ch_pix, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch_pix, CURLOPT_HTTPHEADER, [
             "Content-Type: application/json",
-            "access_token: $subconta_apiKey", // Executa a chamada EM NOME da subconta
+            "access_token: $subconta_apiKey", // Executa a chamada EM NOME da subconta com sua nova chave
             "User-Agent: MeuCashback"
         ]);
 
@@ -123,7 +153,8 @@ if ($codigo_http === 200 || $codigo_http === 201) {
         }
     }
 
-    // Retorna a resposta estruturada para o JavaScript do seu App ler e persistir no Firebase
+    // Retorna a resposta estruturada contendo a 'apiKey' gerada.
+    // Certifique-se de que o JavaScript do seu front-end pega este retorno e o grava no Firebase como 'asaasApiKey'
     echo json_encode([
         "sucesso" => true,
         "walletId" => $walletId,
