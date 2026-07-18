@@ -8,14 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// COLOQUE SUA CHAVE MASTER DO ASAAS ABAIXO
-$apiKeyMaster = 'SUA_CHAVE_MASTER_AQUI'; 
+// Sua Chave Master de Homologação
+$apiKeyMaster = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4'; 
 $urlCob = 'https://sandbox.asaas.com/v3/payments';
 
 $input = json_decode(file_get_contents('php://input'), true);
-$walletIdLojista = $input['asaasCustomerId']; // O ID SUB_... que veio do app
+$walletIdLojista = $input['asaasCustomerId']; // O ID (SUB_...) vindo do Firebase do lojista
 
-// Monta a cobrança travada em R$ 220.00 com a divisão automática
+// Monta o Pix travado em R$ 220,00 com divisão automática
 $dadosPix = [
     "billingType" => "PIX",
     "value" => 220.00,
@@ -24,7 +24,7 @@ $dadosPix = [
     "split" => [
         [
             "walletId" => $walletIdLojista,
-            "percentualValue" => 100.00 // Garante que 100% do líquido vá direto para o lojista
+            "percentualValue" => 100.00 // Todo o valor líquido entra direto na conta do lojista
         ]
     ]
 ];
@@ -43,7 +43,7 @@ $response = curl_exec($ch);
 $data = json_decode($response, true);
 curl_close($ch);
 
-// Com a cobrança criada, solicita a string Copia e Cola e a imagem do QR Code
+// Se a cobrança foi gerada com sucesso, busca o QR Code e a chave Copia e Cola
 if (isset($data['id'])) {
     $paymentId = $data['id'];
     
@@ -57,12 +57,12 @@ if (isset($data['id'])) {
     $pixResponse = curl_exec($chPix);
     curl_close($chPix);
     
-    // Retorna a imagem e o copia-e-cola pro aplicativo
+    // Devolve os dados do QR Code prontos para o Frontend
     echo $pixResponse; 
 } else {
     echo json_encode([
         "sucesso" => false, 
-        "erro" => "Não foi possível estruturar o Split via API.",
+        "erro" => "Nao foi possivel estruturar o Split via API.",
         "detalhes" => $data
     ]);
 }
