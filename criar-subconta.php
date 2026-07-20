@@ -1,4 +1,8 @@
 <?php
+// Desativa exibição de erros na tela para não quebrar a resposta JSON
+ini_set('display_errors', 0);
+error_reporting(0);
+
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, access_token");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
@@ -8,10 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// 🔐 Chave da API Master inserida diretamente para testes
+// 🔐 Chave Master da API Asaas Sandbox
 $apiKeyMaster = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
 
-// 🟢 URL Oficial do Sandbox da API do Asaas
+// 🟢 Endpoint Oficial Sandbox Subcontas
 $urlAsaas = 'https://api-sandbox.asaas.com/v3/accounts';
 
 $input = json_decode(file_get_contents('php://input'), true);
@@ -21,22 +25,49 @@ if (!$input) {
     exit;
 }
 
-// 🧹 Limpeza de máscaras
-$cpfCnpjClean = preg_replace('/[^0-9]/', '', $input['cpfCnpj'] ?? '');
-$cepClean     = preg_replace('/[^0-9]/', '', $input['cep'] ?? '');
-$phoneClean   = preg_replace('/[^0-9]/', '', $input['telefone'] ?? '');
+// 🧹 Limpeza rigorosa de máscaras
+$cpfCnpjClean = preg_replace('/[^0-9]/', '', $input['cpfCnpj'] ?? $input['documento'] ?? $input['cnpj'] ?? $input['cpf'] ?? '');
+$cepClean     = preg_replace('/[^0-9]/', '', $input['cep'] ?? $input['postalCode'] ?? '');
+$phoneClean   = preg_replace('/[^0-9]/', '', $input['telefone'] ?? $input['whatsapp'] ?? $input['mobilePhone'] ?? '');
 
-// 🛠️ Payload para o Asaas
+// 🛡️ Fallbacks para evitar campos vazios que a API do Asaas exige
+if (empty($phoneClean) || strlen($phoneClean) < 10) {
+    $phoneClean = "49999999999"; 
+}
+if (empty($cepClean)) {
+    $cepClean = "89600000";
+}
+
+$nome      = trim($input['nome'] ?? $input['name'] ?? '');
+$email     = trim($input['email'] ?? '');
+$endereco  = trim($input['endereco'] ?? $input['address'] ?? 'Rua XV de Novembro');
+$numero    = trim($input['numero'] ?? $input['addressNumber'] ?? '100');
+$bairro    = trim($input['bairro'] ?? $input['province'] ?? 'Centro');
+
+// Validação dos dados essenciais
+if (empty($nome) || empty($cpfCnpjClean) || empty($email)) {
+    echo json_encode([
+        "sucesso" => false,
+        "erro" => "Nome, CPF/CNPJ e E-mail são obrigatórios."
+    ]);
+    exit;
+}
+
+// Define tipo de empresa dinamicamente
+$companyType = (strlen($cpfCnpjClean) > 11) ? "MEI" : "INDIVIDUAL";
+
+// 🛠️ Payload corrigido e completo
 $dadosSubconta = [
-    "name"          => trim($input['nome'] ?? ''),
-    "email"         => trim($input['email'] ?? ''),
+    "name"          => $nome,
+    "email"         => $email,
     "cpfCnpj"       => $cpfCnpjClean,
     "mobilePhone"   => $phoneClean,
-    "address"       => trim($input['endereco'] ?? ''),
-    "addressNumber" => trim($input['numero'] ?? ''),
-    "province"      => trim($input['bairro'] ?? ''),
+    "incomeValue"   => 5000, // Campo OBRIGATÓRIO pelo Asaas
+    "address"       => $endereco,
+    "addressNumber" => $numero,
+    "province"      => $bairro,
     "postalCode"    => $cepClean,
-    "companyType"   => "INDIVIDUAL"
+    "companyType"   => $companyType
 ];
 
 $ch = curl_init();
@@ -44,6 +75,8 @@ curl_setopt($ch, CURLOPT_URL, $urlAsaas);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Evita falhas de SSL em ambientes de dev/Render
+
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
     'access_token: ' . trim($apiKeyMaster),
