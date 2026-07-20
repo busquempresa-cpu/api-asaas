@@ -56,7 +56,7 @@ curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
-    'access_token: ' . trim($apiKeyMaster)
+    'access_token: ' . trim($apiKeyMaster),
     'User-Agent: MeuCashback/1.0'        
 ]);
 
