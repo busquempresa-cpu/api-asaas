@@ -1,65 +1,117 @@
 <?php
+// Desativa a exibição de erros na tela para não quebrar o JSON do seu app
+ini_set('display_errors', 0);
+error_reporting(0);
+
+header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type, access_token");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Headers: Content-Type");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// 🔐 Puxa a chave API diretamente das Variáveis de Ambiente do Render
-// Se não encontrar no Render, usa a chave fallback entre aspas
-$apiKeyMaster = getenv('ASAAS_API_KEY') ?: '$aact_hmlg_000MzkwODA2MWY2OGM3MWRmDU2NWM3...';
+// 1. Pega os dados enviados pelo seu aplicativo
+$entrada = json_decode(file_get_contents('php://input'), true);
 
-// URL de Homologação (Sandbox) ou Produção
-$urlAsaas = 'https://sandbox.asaas.com/v3/accounts';
+// Limpeza rigorosa do CPF/CNPJ: remove tudo o que não for número
+$documento = isset($entrada['documento']) ? preg_replace('/[^0-9]/', '', $entrada['documento']) : '';
+if (empty($documento)) {
+    $documento = isset($entrada['cnpj']) ? preg_replace('/[^0-9]/', '', $entrada['cnpj']) : '';
+}
+if (empty($documento)) {
+    $documento = isset($entrada['cpf']) ? preg_replace('/[^0-9]/', '', $entrada['cpf']) : '';
+}
 
-$input = json_decode(file_get_contents('php://input'), true);
+$nome = $entrada['nome'] ?? '';
+$email = $entrada['email'] ?? '';
+$whatsapp = isset($entrada['whatsapp']) ? preg_replace('/[^0-9]/', '', $entrada['whatsapp']) : '';
 
-if (!$input) {
-    echo json_encode(["sucesso" => false, "erro" => "Dados de entrada inválidos."]);
+// Garante que o celular tenha um número válido padrão caso venha vazio do app
+if (empty($whatsapp) || strlen($whatsapp) < 10) {
+    $whatsapp = "49999999999"; 
+}
+
+// Validação simples de campos essenciais antes de enviar ao Asaas
+if (empty($nome) || empty($documento) || empty($email)) {
+    echo json_encode([
+        "sucesso" => false,
+        "erro" => "Nome, documento e email sao campos obrigatórios."
+    ]);
     exit;
 }
 
+// Chave do Asaas Sandbox inserida diretamente no código
+$token_asaas = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
+
+// URL Oficial do Asaas Sandbox
+$asaas_url = "https://api-sandbox.asaas.com/v3/accounts";
+
+// Define o tipo de empresa com base no tamanho do documento limpo
+$tipoEmpresa = (strlen($documento) > 11) ? "MEI" : "INDIVIDUAL";
+
+// Prepara a estrutura exigida pelo Asaas (incluindo dados obrigatórios de endereço padrão para testes)
 $dadosSubconta = [
-    "name"          => $input['nome'] ?? '',
-    "email"         => $input['email'] ?? '',
-    "cpfCnpj"       => $input['cpfCnpj'] ?? '',
-    "phone"         => $input['telefone'] ?? '',
-    "address"       => $input['endereco'] ?? '',
-    "addressNumber" => $input['numero'] ?? '',
-    "province"      => $input['bairro'] ?? '',
-    "postalCode"    => $input['cep'] ?? '',
-    "companyType"   => "INDIVIDUAL"
+    "name" => $nome,
+    "email" => $email,
+    "cpfCnpj" => $documento,
+    "companyType" => $tipoEmpresa,
+    "mobilePhone" => $whatsapp,
+    "incomeValue" => 5000,
+    // Endereço padrão exigido pela documentação oficial do Asaas
+    "postalCode" => "89600000",
+    "address" => "Rua XV de Novembro",
+    "addressNumber" => "100",
+    "province" => "Centro",
 ];
 
+// Dispara a requisição Curl para o Asaas
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $urlAsaas);
+curl_setopt($ch, CURLOPT_URL, $asaas_url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
+
+// Evita erros de SSL no servidor de testes do Render
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'access_token: ' . trim($apiKeyMaster)
+    "Content-Type: application/json",
+    "access_token: $token_asaas",
+    "User-Agent: MeuCashback"
 ]);
 
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$resposta = curl_exec($ch);
+$codigo_http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
-if ($httpCode == 200 || $httpCode == 201) {
-    $subcontaData = json_decode($response, true);
+if (!$resposta) {
     echo json_encode([
-        "sucesso"         => true,
-        "asaasCustomerId" => $subcontaData['id'] ?? null,
-        "walletId"        => $subcontaData['walletId'] ?? $subcontaData['id'] ?? null
+        "sucesso" => false,
+        "erro" => "Nao foi possivel conectar ao servidor do Asaas."
+    ]);
+    exit;
+}
+
+$dadosRetorno = json_decode($resposta, true);
+
+if ($codigo_http === 200 || $codigo_http === 201) {
+    echo json_encode([
+        "sucesso" => true,
+        "walletId" => $dadosRetorno['walletId'] ?? '',
+        "apiKey" => $dadosRetorno['apiKey'] ?? ''
     ]);
 } else {
+    // Retorna o erro exato que a API do Asaas devolveu para identificarmos qualquer problema
+    $mensagemErro = "Erro ao cadastrar no Asaas.";
+    if (isset($dadosRetorno['errors']) && is_array($dadosRetorno['errors'])) {
+        $mensagemErro = $dadosRetorno['errors'][0]['description'] ?? $mensagemErro;
+    }
+    
     echo json_encode([
-        "sucesso"  => false,
-        "erro"     => "Erro ao criar subconta no Asaas.",
-        "detalhes" => json_decode($response, true)
+        "sucesso" => false,
+        "erro" => $mensagemErro,
+        "detalhes" => "HTTP $codigo_http - Documento enviado: $documento"
     ]);
 }
-?>
