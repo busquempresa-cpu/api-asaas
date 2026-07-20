@@ -8,20 +8,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// 🔐 Puxa a chave API diretamente das Variáveis de Ambiente do Render
-// Se não encontrar no Render, usa a chave fallback entre aspas
+// 🔐 Puxa a chave API das Variáveis de Ambiente do Render (ou usa a fallback)
 $apiKeyMaster = getenv('ASAAS_API_KEY') ?: '$aact_hmlg_000MzkwODA2MWY2OGM3MWRmDU2NWM3...';
 
-// URL de Homologação (Sandbox) ou Produção
-$urlAsaas = 'https://api-sandbox.asaas.com/v3/accounts';
+// URL de Sandbox / Homologação do Asaas
+$urlAsaas = 'https://sandbox.asaas.com/v3/accounts';
 
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!$input) {
-    echo json_encode(["sucesso" => false, "erro" => "Dados de entrada inválidos."]);
+    echo json_encode(["sucesso" => false, "erro" => "Dados de entrada inválidos ou vazios."]);
     exit;
 }
 
+// Mapeamento dos campos recebidos do aplicativo
 $dadosSubconta = [
     "name"          => $input['nome'] ?? '',
     "email"         => $input['email'] ?? '',
@@ -50,16 +50,27 @@ curl_close($ch);
 
 if ($httpCode == 200 || $httpCode == 201) {
     $subcontaData = json_decode($response, true);
+    
+    // Sucesso ao criar no Asaas
     echo json_encode([
         "sucesso"         => true,
         "asaasCustomerId" => $subcontaData['id'] ?? null,
         "walletId"        => $subcontaData['walletId'] ?? $subcontaData['id'] ?? null
     ]);
 } else {
+    // 💡 Captura a mensagem de erro detalhada retornada pelo Asaas
+    $detalhesErro = json_decode($response, true);
+    
+    if (isset($detalhesErro['errors'][0]['description'])) {
+        $mensagemAsaas = $detalhesErro['errors'][0]['description'];
+    } else {
+        $mensagemAsaas = "Erro no servidor Asaas (Código HTTP: " . $httpCode . ")";
+    }
+
     echo json_encode([
         "sucesso"  => false,
-        "erro"     => "Erro ao criar subconta no Asaas.",
-        "detalhes" => json_decode($response, true)
+        "erro"     => "Asaas: " . $mensagemAsaas,
+        "detalhes" => $detalhesErro
     ]);
 }
 ?>
