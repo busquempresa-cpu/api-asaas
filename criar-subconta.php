@@ -1,5 +1,5 @@
-// Habilita o CORS para o seu app Firebase
 <?php
+// Habilita o CORS para o seu aplicativo Firebase
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, User-Agent");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
@@ -9,39 +9,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit(0);
 }
-// 🔐 Puxa a chave API configurada no Environment do Render
+
+// 🔐 Puxe a chave API definida no Ambiente do Render / Servidor
 $apiKeyMaster = getenv('ASAAS_API_KEY');
 
 if (!$apiKeyMaster) {
     echo json_encode([
-        "sucesso" => false, 
-        "erro" => "Chave de API do Asaas não configurada no servidor (ASAAS_API_KEY)."
+        "sucesso" => false,
+        "erro" => "Chave de API do Asaas não configurada no servidor"
     ]);
     exit;
 }
 
-// ⚠️ Endpoint do Sandbox (sem a barra final para evitar erros de POST)
 // 🟢 URL Correta do Sandbox da API do Asaas
 $urlAsaas = 'https://api-sandbox.asaas.com/v3/accounts';
 
 $input = json_decode(file_get_contents('php://input'), true);
 
 if (!$input) {
-    echo json_encode(["sucesso" => false, "erro" => "Dados de entrada inválidos ou vazios."]);
+    echo json_encode([
+        "sucesso" => false,
+        "erro" => "Dados de entrada não recebidos"
+    ]);
     exit;
 }
 
-// 🧹 Limpeza de máscaras para evitar recusa no Asaas
+// 🧹 Limpeza de máscaras para evitar recusas no Asaas
 $cpfCnpjClean = preg_replace('/[^0-9]/', '', $input['cpfCnpj'] ?? '');
 $cepClean     = preg_replace('/[^0-9]/', '', $input['cep'] ?? '');
-$phoneClean   = preg_replace('/[^0-9]/', '', $input['telefone'] ?? '');
+$phoneClean   = preg_replace('/[^0-9]/', '', $input['whatsapp'] ?? $input['celular'] ?? '');
 
 // 🛠️ Montagem do Payload ajustado para a API do Asaas
 $dadosSubconta = [
     "name"          => trim($input['nome'] ?? ''),
     "email"         => trim($input['email'] ?? ''),
     "cpfCnpj"       => $cpfCnpjClean,
-    "mobilePhone"   => $phoneClean, // Corrigido de 'phone' para 'mobilePhone'
+    "mobilePhone"   => $phoneClean,
     "address"       => trim($input['endereco'] ?? ''),
     "addressNumber" => trim($input['numero'] ?? ''),
     "province"      => trim($input['bairro'] ?? ''),
@@ -57,7 +60,7 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
     'access_token: ' . trim($apiKeyMaster),
-    'User-Agent: MeuCashback/1.0'        
+    'User-Agent: MeuCashback/1.0'
 ]);
 
 $response = curl_exec($ch);
@@ -67,24 +70,25 @@ curl_close($ch);
 $subcontaData = json_decode($response, true);
 
 if ($httpCode == 200 || $httpCode == 201) {
-    
-    // Mapeamento completo para garantir que o JS receba o ID sem falhas
+
+    // Mapeamento completo para garantir que o JS receba os dados
     $accountCode = $subcontaData['id'] ?? null;
-    $walletId    = $subcontaData['walletId'] ?? $subcontaData['accountNumber'] ?? $accountCode;
+    $walletId    = $subcontaData['walletId'] ?? null;
+    $apiKey      = $subcontaData['apiKey'] ?? null;
 
     echo json_encode([
-        "sucesso"         => true,
-        "asaasCustomerId" => $accountCode,
-        "walletId"        => $walletId,
-        "id_carteira"     => $walletId, // Mapeado para compatibilidade com o JS
-        "apiKeySubconta"  => $subcontaData['apiKey'] ?? null
+        "sucesso"          => true,
+        "asaasCustomerId"  => $accountCode,
+        "walletId"         => $walletId,
+        "id_carteira"      => $walletId,
+        "apiKeySubconta"   => $apiKey
     ]);
 
 } else {
 
     // Tratamento de erro detalhado caso o Asaas recuse
     $mensagemAsaas = "Erro no servidor Asaas (HTTP " . $httpCode . ")";
-    
+
     if (isset($subcontaData['errors'][0]['description'])) {
         $mensagemAsaas = $subcontaData['errors'][0]['description'];
     }
