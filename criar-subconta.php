@@ -8,18 +8,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// 🔐 Puxa a chave API do Render (Environment Variables)
-$apiKeyMaster = getenv('ASAAS_API_KEY');
+// 🔐 Chave da API Master inserida diretamente para testes
+$apiKeyMaster = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
 
-if (!$apiKeyMaster) {
-    echo json_encode([
-        "sucesso" => false, 
-        "erro" => "Chave de API do Asaas não configurada no servidor (ASAAS_API_KEY)."
-    ]);
-    exit;
-}
-
-// 🟢 URL Oficial do Sandbox da API do Asaas (Com api- no começo e sem barra no final)
+// 🟢 URL Oficial do Sandbox da API do Asaas
 $urlAsaas = 'https://api-sandbox.asaas.com/v3/accounts';
 
 $input = json_decode(file_get_contents('php://input'), true);
@@ -29,17 +21,17 @@ if (!$input) {
     exit;
 }
 
-// 🧹 Limpeza de máscaras (pontos, traços, barras) dos dados
+// 🧹 Limpeza de máscaras
 $cpfCnpjClean = preg_replace('/[^0-9]/', '', $input['cpfCnpj'] ?? '');
 $cepClean     = preg_replace('/[^0-9]/', '', $input['cep'] ?? '');
 $phoneClean   = preg_replace('/[^0-9]/', '', $input['telefone'] ?? '');
 
-// 🛠️ Montagem do Payload ajustado para o Asaas
+// 🛠️ Payload para o Asaas
 $dadosSubconta = [
     "name"          => trim($input['nome'] ?? ''),
     "email"         => trim($input['email'] ?? ''),
     "cpfCnpj"       => $cpfCnpjClean,
-    "mobilePhone"   => $phoneClean, // Exigido pelo Asaas (DDD + número)
+    "mobilePhone"   => $phoneClean,
     "address"       => trim($input['endereco'] ?? ''),
     "addressNumber" => trim($input['numero'] ?? ''),
     "province"      => trim($input['bairro'] ?? ''),
@@ -55,7 +47,7 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
     'access_token: ' . trim($apiKeyMaster),
-    'User-Agent: MeuCashbackApp/1.0' // 👈 Cabeçalho obrigatório exigido pelo Asaas
+    'User-Agent: MeuCashbackApp/1.0'
 ]);
 
 $response = curl_exec($ch);
@@ -66,7 +58,6 @@ $subcontaData = json_decode($response, true);
 
 if ($httpCode == 200 || $httpCode == 201) {
     
-    // Captura o ID da conta gerado pelo Asaas
     $accountCode = $subcontaData['id'] ?? null;
     $walletId    = $subcontaData['walletId'] ?? $subcontaData['accountNumber'] ?? $accountCode;
 
@@ -74,13 +65,12 @@ if ($httpCode == 200 || $httpCode == 201) {
         "sucesso"         => true,
         "asaasCustomerId" => $accountCode,
         "walletId"        => $walletId,
-        "id_carteira"     => $walletId, // Garante que o JS encontre a propriedade id_carteira
+        "id_carteira"     => $walletId,
         "apiKeySubconta"  => $subcontaData['apiKey'] ?? null
     ]);
 
 } else {
 
-    // Retorna a mensagem de erro exata que o Asaas devolveu
     $mensagemAsaas = "Erro no servidor Asaas (HTTP " . $httpCode . ")";
     
     if (isset($subcontaData['errors'][0]['description'])) {
