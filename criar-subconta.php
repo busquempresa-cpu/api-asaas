@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $apiKeyMaster = getenv('ASAAS_API_KEY') ?: '$aact_hmlg_000MzkwODA2MWY2OGM3MWRmDU2NWM3...';
 
 // URL de Homologação (Sandbox) ou Produção
-$urlAsaas = 'https://sandbox.asaas.com/v3/accounts';
+$urlAsaas = 'https://api-sandbox.asaas.com/v3/accounts';
 
 $input = json_decode(file_get_contents('php://input'), true);
 
