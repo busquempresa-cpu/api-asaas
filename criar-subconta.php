@@ -9,8 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // 🔐 Puxa a chave API das Variáveis de Ambiente do Render (ou usa a fallback)
-$apiKeyMaster = getenv('ASAAS_API_KEY') ?: '$aact_hmlg_000MzkwODA2MWY2OGM3MWRmDU2NWM3...';
-
+$token_master = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
 // URL de Sandbox / Homologação do Asaas
 $urlAsaas = 'https://sandbox.asaas.com/v3/accounts';
 
