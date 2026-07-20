@@ -8,8 +8,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Sua Chave Master de Homologação / Sandbox
-$apiKeyMaster = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRmDU2NWM3...'; // Coloque sua chave completa aqui
+// 🔐 Puxa a chave API diretamente das Variáveis de Ambiente do Render
+// Se não encontrar no Render, usa a chave fallback entre aspas
+$apiKeyMaster = getenv('ASAAS_API_KEY') ?: '$aact_hmlg_000MzkwODA2MWY2OGM3MWRmDU2NWM3...';
+
+// URL de Homologação (Sandbox) ou Produção
 $urlAsaas = 'https://sandbox.asaas.com/v3/accounts';
 
 $input = json_decode(file_get_contents('php://input'), true);
@@ -35,10 +38,10 @@ $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $urlAsaas);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta)); // Corrigida a falta de vírgula no original
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosSubconta));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Content-Type: application/json',
-    'access_token: ' . $apiKeyMaster
+    'access_token: ' . trim($apiKeyMaster)
 ]);
 
 $response = curl_exec($ch);
@@ -47,7 +50,6 @@ curl_close($ch);
 
 if ($httpCode == 200 || $httpCode == 201) {
     $subcontaData = json_decode($response, true);
-    // Retorna o ID (SUB_...) para você guardar no Firebase
     echo json_encode([
         "sucesso"         => true,
         "asaasCustomerId" => $subcontaData['id'] ?? null,
