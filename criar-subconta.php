@@ -20,7 +20,8 @@ if (!$apiKeyMaster) {
 }
 
 // ⚠️ Endpoint do Sandbox (sem a barra final para evitar erros de POST)
-$urlAsaas = 'https://sandbox.asaas.com/v3/accounts';
+// 🟢 URL Correta do Sandbox da API do Asaas
+$urlAsaas = 'https://api-sandbox.asaas.com/v3/accounts';
 
 $input = json_decode(file_get_contents('php://input'), true);
 
