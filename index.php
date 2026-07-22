@@ -8,35 +8,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// 🔐 Chave Master e Endpoint do Asaas
-$apiKeyMaster = getenv('ASAAS_API_KEY') ?: '$aact_hmlg_000MzkwODA2MWY2OGM3MWRmDU2NWM3...';
-$urlCob = 'https://sandbox.asaas.com/v3/payments/';
+// 🔐 Chave Master e Endpoints Corretos do Asaas (Adicionado /api)
+$token_master = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
+$urlCob       = 'https://sandbox.asaas.com/api/v3/payments';
 
 $inputJson = file_get_contents('php://input');
 $input = json_decode($inputJson, true);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // Captura o walletId da subconta do lojista enviada pelo Frontend
+    // Captura os dados enviados pelo Frontend
     $walletIdLojista = $input['walletId'] ?? $input['asaasCustomerId'] ?? '';
+    $customerId      = $input['customerId'] ?? ''; // OBRIGATÓRIO (ID do Pagador cus_...)
     $valorTotal      = floatval($input['valor'] ?? 0);
-    $taxaPlataforma  = 25.00; // Sua comissão fixa (exemplo)
+    $taxaPlataforma  = 25.00; // Sua comissão fixa
 
-    // Validação mínima de segurança
-    if ($valorTotal <= 0 || empty($walletIdLojista)) {
+    // 1. Validação estrita de campos obrigatórios
+    if ($valorTotal <= 0 || empty($walletIdLojista) || empty($customerId)) {
         echo json_encode([
             "sucesso" => false,
-            "erro"    => "Dados insuficientes para gerar a recarga (Valor ou Wallet ID ausentes)."
+            "erro"    => "Dados insuficientes: 'valor', 'walletId' e 'customerId' são obrigatórios."
         ]);
         exit;
     }
 
-    // Calcula o valor líquido que repassa para o lojista
+    // Regra para o Split (o valor do split não pode exceder o valor total)
     $valorLojista = $valorTotal - $taxaPlataforma;
+    if ($valorLojista <= 0) {
+        $valorLojista = $valorTotal; // Ajuste de segurança caso a recarga seja menor que a taxa
+    }
 
-    // Estrutura de Cobrança Pix com Split
+    // 2. Estrutura da Cobrança PIX com Split
     $dadosPix = [
-        "customer"    => $input['customerId'] ?? null, // Opcional se gerado dinâmico
+        "customer"    => $customerId,
         "billingType" => "PIX",
         "value"       => $valorTotal,
         "dueDate"     => date('Y-m-d'),
@@ -46,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         "split" => [
             [
                 "walletId"   => $walletIdLojista,
-                "fixedValue" => $valorLojista // Envia a parte do lojista direto para a subconta dele
+                "fixedValue" => $valorLojista
             ]
         ]
     ];
@@ -55,7 +59,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $urlCob);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosPix));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -69,36 +72,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $dados = json_decode($response, true);
 
-    // Request 2: Busca o QR Code Pix se a cobrança foi gerada
+    // Request 2: Busca o QR Code Pix se a cobrança foi criada
     if (($httpCode == 200 || $httpCode == 201) && isset($dados['id'])) {
         $paymentId = $dados['id'];
-        $urlQrCode = "https://sandbox.asaas.com/v3/payments/{$paymentId}/pixQrCode";
+        $urlQrCode = "https://sandbox.asaas.com/api/v3/payments/{$paymentId}/pixQrCode";
 
         $chPix = curl_init();
         curl_setopt($chPix, CURLOPT_URL, $urlQrCode);
         curl_setopt($chPix, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($chPix, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($chPix, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
             'access_token: ' . trim($apiKeyMaster)
         ]);
 
         $pixResponse = curl_exec($chPix);
         curl_close($chPix);
 
-        // Devolve os dados do QR Code (encodedImage e payload Copia e Cola)
-        echo $pixResponse;
+        $pixDados = json_decode($pixResponse, true);
+
+        // Retorna um JSON padronizado para o app
+        echo json_encode([
+            "sucesso"       => true,
+            "paymentId"     => $paymentId,
+            "encodedImage"  => $pixDados['encodedImage'] ?? null,
+            "payload"       => $pixDados['payload'] ?? null,
+            "expirationDate"=> $pixDados['expirationDate'] ?? null
+        ]);
         exit;
     } else {
+        // Se o Asaas recusou, devolve o motivo exato
         echo json_encode([
             "sucesso"  => false,
-            "erro"     => "Não foi possível gerar a cobrança no Asaas.",
+            "erro"     => "Erro na API do Asaas ao gerar a cobrança.",
             "detalhes" => $dados
         ]);
         exit;
     }
 }
 
-// Mensagem padronizada para requisições GET diretas
+// Mensagem padronizada para requisições GET
 echo json_encode([
     "status"   => "Servidor Backend de Recargas Ativo",
     "ambiente" => "Sandbox (Testes)"
