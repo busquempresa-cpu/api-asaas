@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosPix));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'access_token: ' . trim($apiKeyMaster)
+        'access_token: ' . trim($apiKeyMaster),
         'User-Agent: MeuCashbackApp/1.0'        
     ]);
 
