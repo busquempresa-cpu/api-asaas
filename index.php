@@ -4,8 +4,10 @@ header("Access-Control-Allow-Headers: Content-Type, access_token");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
 
+// Trata a requisição PREFLIGHT (OPTIONS) do navegador/WebView
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
+    http_response_code(200);
+    exit();
 }
 
 // 🔐 Chave Master e Endpoints Corretos do Asaas (Adicionado /api)
@@ -76,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Request 2: Busca o QR Code Pix se a cobrança foi criada
     if (($httpCode == 200 || $httpCode == 201) && isset($dados['id'])) {
         $paymentId = $dados['id'];
-        $urlQrCode = "https://sandbox.asaas.com/api/v3/payments/{$paymentId}/pixQrCode";
+        $urlQrCode = "https://api-sandbox.asaas.com//v3/payments/{$paymentId}/pixQrCode";
 
         $chPix = curl_init();
         curl_setopt($chPix, CURLOPT_URL, $urlQrCode);
