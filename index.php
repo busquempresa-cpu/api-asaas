@@ -1,56 +1,58 @@
 <?php
+// 1. Silencia qualquer mensagem de erro do PHP em HTML
+error_reporting(0);
+ini_set('display_errors', 0);
+
+// 2. Cabeçalhos CORS e JSON estritos
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, access_token");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
-// Força o tipo de conteúdo para JSON (impede o navegador de injetar tradutores/HTML)
-header('Content-Type: application/json; charset=utf-8');
-// Trata a requisição PREFLIGHT (OPTIONS) do navegador/WebView
+
+// Trata a requisição PREFLIGHT (OPTIONS) do navegador
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// 🔐 Chave Master e Endpoints Corretos do Asaas (Adicionado /api)
+// 🔐 Chave Master e Endpoint Sandbox do Asaas
 $token_master = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
-$urlAsaas = 'https://api-sandbox.asaas.com/v3/payments';
+$urlAsaas     = 'https://api-sandbox.asaas.com/v3/payments';
 
 $inputJson = file_get_contents('php://input');
-$input = json_decode($inputJson, true);
+$input     = json_decode($inputJson, true) ?? [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Captura os dados enviados pelo Frontend
     $walletIdLojista = $input['walletId'] ?? $input['asaasCustomerId'] ?? '';
-    $customerId      = $input['customerId'] ?? ''; // OBRIGATÓRIO (ID do Pagador cus_...)
+    $customerId      = $input['customerId'] ?? ''; 
     $valorTotal      = floatval($input['valor'] ?? 0);
     $taxaPlataforma  = 25.00; // Sua comissão fixa
 
-    // 1. Validação estrita de campos obrigatórios
+    // Validação estrita de campos obrigatórios
     if ($valorTotal <= 0 || empty($walletIdLojista) || empty($customerId)) {
         echo json_encode([
             "sucesso" => false,
             "erro"    => "Dados insuficientes: 'valor', 'walletId' e 'customerId' são obrigatórios."
         ]);
-        exit;
+        exit();
     }
 
-    // Regra para o Split (o valor do split não pode exceder o valor total)
+    // Regra para o Split
     $valorLojista = $valorTotal - $taxaPlataforma;
     if ($valorLojista <= 0) {
-        $valorLojista = $valorTotal; // Ajuste de segurança caso a recarga seja menor que a taxa
+        $valorLojista = $valorTotal; 
     }
 
-    // 2. Estrutura da Cobrança PIX com Split
+    // Estrutura da Cobrança PIX com Split
     $dadosPix = [
         "customer"    => $customerId,
         "billingType" => "PIX",
         "value"       => $valorTotal,
         "dueDate"     => date('Y-m-d'),
         "description" => "Recarga Saldo Cashback - Meu Cashback",
-        
-        // --- SPLIT DE PAGAMENTO ---
-        "split" => [
+        "split"       => [
             [
                 "walletId"   => $walletIdLojista,
                 "fixedValue" => $valorLojista
@@ -58,15 +60,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]
     ];
 
-    // Request 1: Cria a Cobrança no Asaas
+    // Request 1: Cria a Cobrança no Asaas (Variáveis Corrigidas: $urlAsaas e $token_master)
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $urlCob);
+    curl_setopt($ch, CURLOPT_URL, $urlAsaas);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dadosPix));
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'access_token: ' . trim($apiKeyMaster),
+        'access_token: ' . trim($token_master),
         'User-Agent: MeuCashbackApp/1.0'        
     ]);
 
@@ -79,14 +82,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Request 2: Busca o QR Code Pix se a cobrança foi criada
     if (($httpCode == 200 || $httpCode == 201) && isset($dados['id'])) {
         $paymentId = $dados['id'];
-        $urlQrCode = "https://api-sandbox.asaas.com//v3/payments/{$paymentId}/pixQrCode";
+        $urlQrCode = "https://api-sandbox.asaas.com/v3/payments/{$paymentId}/pixQrCode";
 
         $chPix = curl_init();
         curl_setopt($chPix, CURLOPT_URL, $urlQrCode);
         curl_setopt($chPix, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($chPix, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($chPix, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json',
-            'access_token: ' . trim($apiKeyMaster)
+            'access_token: ' . trim($token_master)
         ]);
 
         $pixResponse = curl_exec($chPix);
@@ -94,27 +98,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pixDados = json_decode($pixResponse, true);
 
-        // Retorna um JSON padronizado para o app
+        // Retorna JSON padronizado e limpo para o aplicativo
         echo json_encode([
-            "sucesso"       => true,
-            "paymentId"     => $paymentId,
-            "encodedImage"  => $pixDados['encodedImage'] ?? null,
-            "payload"       => $pixDados['payload'] ?? null,
-            "expirationDate"=> $pixDados['expirationDate'] ?? null
+            "sucesso"        => true,
+            "paymentId"      => $paymentId,
+            "encodedImage"   => $pixDados['encodedImage'] ?? null,
+            "payload"        => $pixDados['payload'] ?? null,
+            "expirationDate" => $pixDados['expirationDate'] ?? null
         ]);
-        exit;
+        exit();
     } else {
-        // Se o Asaas recusou, devolve o motivo exato
+        // Retorna o motivo do Asaas se a cobrança for recusada
         echo json_encode([
             "sucesso"  => false,
             "erro"     => "Erro na API do Asaas ao gerar a cobrança.",
             "detalhes" => $dados
         ]);
-        exit;
+        exit();
     }
 }
 
-// Mensagem padronizada para requisições GET
+// Resposta Padrão para requisição GET (Teste no Navegador)
 echo json_encode([
     "status"   => "Servidor Backend de Recargas Ativo",
     "ambiente" => "Sandbox (Testes)"
