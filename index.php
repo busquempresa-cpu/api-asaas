@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // 🔐 Chave Master e Endpoints Corretos do Asaas (Adicionado /api)
 $token_master = '$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmRlYzM1MzVkLTM5NWEtNDg0OC04ZDVlLTI2NjQxNjI0YzZlYzo6JGFhY2hfMDdmNTRkOGUtNTk0Ni00ZWE3LTljMWEtZWQxYTY4ZjI2NzQ4';
-$urlAsaas = 'https://api-sandbox.asaas.com/v3/payment';
+$urlAsaas = 'https://api-sandbox.asaas.com/v3/payments';
 
 $inputJson = file_get_contents('php://input');
 $input = json_decode($inputJson, true);
@@ -64,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
         'access_token: ' . trim($apiKeyMaster)
+        'User-Agent: MeuCashbackApp/1.0'        
     ]);
 
     $response = curl_exec($ch);
