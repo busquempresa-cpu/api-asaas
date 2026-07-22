@@ -3,7 +3,8 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type, access_token");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Content-Type: application/json; charset=UTF-8");
-
+// Força o tipo de conteúdo para JSON (impede o navegador de injetar tradutores/HTML)
+header('Content-Type: application/json; charset=utf-8');
 // Trata a requisição PREFLIGHT (OPTIONS) do navegador/WebView
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
