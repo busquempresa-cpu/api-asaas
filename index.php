@@ -97,16 +97,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         curl_close($chPix);
 
         $pixDados = json_decode($pixResponse, true);
-
-        // Retorna JSON padronizado e limpo para o aplicativo
+    // Se o Asaas devolveu os dados do Pix com sucesso
+    if (isset($pixDados['encodedImage']) && !empty($pixDados['encodedImage'])) {
         echo json_encode([
             "sucesso"        => true,
             "paymentId"      => $paymentId,
-            "encodedImage"   => $pixDados['encodedImage'] ?? $pixDados['qrCode'] ?? $pixDados['imagem'] ?? null,
-            "payload"        => $pixDados['payload'] ?? $pixDados['copiaECola'] ?? $pixDados['payloadPix'] ?? null,
+            "encodedImage"   => $pixDados['encodedImage'],
+            "payload"        => $pixDados['payload'],
             "expirationDate" => $pixDados['expirationDate'] ?? null
-]);
-exit();
+        ]);
+        exit();
+    } else {
+        // Se a busca do Pix falhou, avisa o app exibindo o erro retornado pelo Asaas
+        echo json_encode([
+            "sucesso"  => false,
+            "erro"     => "Cobrança gerada, mas o Asaas não retornou o QR Code Pix.",
+            "detalhes" => $pixDados
+        ]);
+        exit();
+    }
+        
 
     } else {
         // Retorna o motivo do Asaas se a cobrança for recusada
