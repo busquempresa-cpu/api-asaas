@@ -98,31 +98,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pixDados = json_decode($pixResponse, true);
 
-// Verifica se o Asaas realmente retornou a imagem do QR Code
-if (isset($pixDados['encodedImage']) && !empty($pixDados['encodedImage'])) {
-    
-    // Sucesso REAL: Devolve os dados para o JavaScript
-    echo json_encode([
-        "sucesso"        => true,
-        "paymentId"      => $paymentId,
-        "encodedImage"   => $pixDados['encodedImage'],
-        "payload"        => $pixDados['payload'],
-        "expirationDate" => $pixDados['expirationDate'] ?? null
-    ]);
-    exit();
-
-} else {
-
-    // Erro do Asaas na busca do QR Code
-    echo json_encode([
-        "sucesso"  => false,
-        "erro"     => "Não foi possível buscar o QR Code do Pix.",
-        "detalhes" => $pixDados
-    ]);
-    exit();
-
-   }
-        
+        // Retorna JSON padronizado e limpo para o aplicativo
+        echo json_encode([
+            "sucesso"        => true,
+            "paymentId"      => $paymentId,
+            "encodedImage"   => $pixDados['encodedImage'] ?? null,
+            "payload"        => $pixDados['payload'] ?? null,
+            "expirationDate" => $pixDados['expirationDate'] ?? null
+        ]);
+        exit();
+    } else {
+        // Retorna o motivo do Asaas se a cobrança for recusada
+        echo json_encode([
+            "sucesso"  => false,
+            "erro"     => "Erro na API do Asaas ao gerar a cobrança.",
+            "detalhes" => $dados
+        ]);
+        exit();
+    }
 }
 
 // Resposta Padrão para requisição GET (Teste no Navegador)
