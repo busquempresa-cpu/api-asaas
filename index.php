@@ -102,9 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode([
             "sucesso"        => true,
             "paymentId"      => $paymentId,
-            "encodedImage"   => $pixDados['encodedImage'] ?? null,
-            "payload"        => $pixDados['payload'] ?? null,
-            "expirationDate" => $pixDados['expirationDate'] ?? null
+             "encodedImage"   => $pixDados['encodedImage'] ?? $pixDados['qrCode'] ?? $pixDados['imagem'] ?? null,
+             "payload"        => $pixDados['payload'] ?? $pixDados['copiaECola'] ?? $pixDados['payloadPix'] ?? null,       
+             "expirationDate" => $pixDados['expirationDate'] ?? null
         ]);
         exit();
     } else {
